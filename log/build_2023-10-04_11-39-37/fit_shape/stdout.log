@@ -1,0 +1,18 @@
+running egg_info
+writing ../../build/fit_shape/fit_shape.egg-info/PKG-INFO
+writing dependency_links to ../../build/fit_shape/fit_shape.egg-info/dependency_links.txt
+writing entry points to ../../build/fit_shape/fit_shape.egg-info/entry_points.txt
+writing requirements to ../../build/fit_shape/fit_shape.egg-info/requires.txt
+writing top-level names to ../../build/fit_shape/fit_shape.egg-info/top_level.txt
+reading manifest file '../../build/fit_shape/fit_shape.egg-info/SOURCES.txt'
+writing manifest file '../../build/fit_shape/fit_shape.egg-info/SOURCES.txt'
+running build
+running build_py
+running install
+running install_lib
+running install_data
+running install_egg_info
+removing '/home/jared/final_project_group_4/install/fit_shape/lib/python3.10/site-packages/fit_shape-0.0.0-py3.10.egg-info' (and everything under it)
+Copying ../../build/fit_shape/fit_shape.egg-info to /home/jared/final_project_group_4/install/fit_shape/lib/python3.10/site-packages/fit_shape-0.0.0-py3.10.egg-info
+running install_scripts
+writing list of installed files to '/home/jared/final_project_group_4/build/fit_shape/install.log'

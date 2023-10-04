@@ -1,0 +1,44 @@
+-- The C compiler identification is GNU 11.4.0
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found ament_cmake: 1.3.5 (/opt/ros/humble/share/ament_cmake/cmake)
+-- Found Python3: /usr/bin/python3.10 (found version "3.10.12") found components: Interpreter 
+-- Found ament_lint_auto: 0.12.8 (/opt/ros/humble/share/ament_lint_auto/cmake)
+-- Added test 'flake8' to check Python code syntax and style conventions
+-- Added test 'lint_cmake' to check CMake code style
+-- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257
+-- Added test 'xmllint' to check XML markup files
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/jared/final_project_group_4/build/vbm_project_env
+-- Install configuration: ""
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/launch
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/launch/simulation.launch.py
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/worlds
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/worlds/simulation.world
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/urdf
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/urdf/camera.urdf
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/ament_index/resource_index/package_run_dependencies/vbm_project_env
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/ament_index/resource_index/parent_prefix_path/vbm_project_env
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/environment/ament_prefix_path.sh
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/environment/ament_prefix_path.dsv
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/environment/path.sh
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/environment/path.dsv
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/local_setup.bash
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/local_setup.sh
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/local_setup.zsh
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/local_setup.dsv
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/package.dsv
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/ament_index/resource_index/packages/vbm_project_env
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/cmake/vbm_project_envConfig.cmake
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/cmake/vbm_project_envConfig-version.cmake
+-- Installing: /home/jared/final_project_group_4/install/vbm_project_env/share/vbm_project_env/package.xml
