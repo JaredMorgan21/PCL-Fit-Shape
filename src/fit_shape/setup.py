@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+        	'fit_shape = fit_shape.fit_shape:main',
         ],
     },
 )
