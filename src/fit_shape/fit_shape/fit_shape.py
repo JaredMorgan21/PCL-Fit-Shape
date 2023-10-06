@@ -9,9 +9,11 @@
 import rclpy # Python library for ROS 2
 from rclpy.node import Node # Handles the creation of nodes
 import numpy as np
+import pcl
 from std_msgs.msg import Float64MultiArray
 from sensor_msgs.msg import PointCloud2
- 
+from sensor_msgs_py import point_cloud2 as pc2
+
 class PCSubscriber(Node):
   """
   Create an PCSubscriber class, which is a subclass of the Node class.
@@ -35,24 +37,47 @@ class PCSubscriber(Node):
 
     # Create the publisher. This publisher will publish an Image
     # to the video_frames topic. The queue size is 10 messages.
-    self.publisher_ = self.create_publisher(Float64MultiArray, 'centers', 10)
+    self.publisher_ = self.create_publisher(PointCloud2, 'fit_PC', 10)
    
    
-  def listener_callback(self, data):
+  def listener_callback(self, msg):
     """
     Callback function.
     """
     # Display the message on the console
     self.get_logger().info('Receiving point cloud')
 
-    pc = data;
-    print(pc);
-
-    msg = Float64MultiArray();
-    msg.data = [0.0, 1.0];
-    self.publisher_.publish(msg)
+    #1-d point-cloud message of float-32s. Composed of pointfields with x, y, z, and rgb. A point is comprised of bytes where
+    #x: 0-3
+    #y: 4-7
+    #z: 8-11
+    #rgb: 15-19
+    pcmsg = msg;
     
-  
+    #converts binary blob to numpy array of tuple (x, y, z, rgb);
+    #pcnp = pc2.read_points(msg);
+    
+    #converts binary blob to numpy array of tuple (x, y, z, rgb);
+    pcls = pc2.read_points_list(msg, skip_nans=True, field_names=("x", "y", "z"));
+    
+    #converts list to PointCloud
+    pc = pcl.PointCloud();
+    pc.from_list(pcls);
+    
+    # taken from https://github.com/strawlab/python-pcl/blob/master/examples/official/Segmentation/Plane_model_segmentation.py
+    seg = pc.make_segmenter()
+    seg.set_model_type(pcl.SACMODEL_PLANE)
+    seg.set_method_type(pcl.SAC_RANSAC)
+    indices, model = seg.segment()
+    
+    #print(type(seg));
+
+    pcls = pc.to_list();
+    pcmsg = pc2.create_cloud_xyz32(pcmsg.header,pcls);
+
+    self.publisher_.publish(pcmsg)
+ 
+
 def main(args=None):
   
   # Initialize the rclpy library
