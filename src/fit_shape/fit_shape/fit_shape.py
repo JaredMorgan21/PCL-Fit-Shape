@@ -75,12 +75,22 @@ class PCSubscriber(Node):
     seg.set_optimize_coefficients(True)
     seg.set_model_type(pcl.SACMODEL_NORMAL_PLANE)
     seg.set_method_type(pcl.SAC_RANSAC)
-    seg.set_distance_threshold(0.01)
+    seg.set_distance_threshold(0.005)
     seg.set_normal_distance_weight(0.01)
     seg.set_max_iterations(100)
     indices, coefficients = seg.segment()
     
     non_plane = pc.extract(indices, True)
+    
+    # clusters the shapes found
+    # from https://github.com/strawlab/python-pcl/blob/master/examples/official/Segmentation/cluster_extraction.py
+    tree = non_plane.make_kdtree()
+    ec = non_plane.make_EuclideanClusterExtraction()
+    ec.set_ClusterTolerance(0.02)
+    ec.set_MinClusterSize(100)
+    ec.set_MaxClusterSize(25000)
+    ec.set_SearchMethod(tree)
+    cluster_indices = ec.Extract()
     
     # identifies cylinder
     seg = non_plane.make_segmenter_normals(ksearch=50)
@@ -97,25 +107,40 @@ class PCSubscriber(Node):
     seg.set_optimize_coefficients(True)
     seg.set_model_type(pcl.SACMODEL_SPHERE)
     seg.set_method_type(pcl.SAC_RANSAC)
-    seg.set_distance_threshold(0.03)
+    seg.set_distance_threshold(0.01)
     seg.set_normal_distance_weight(0.01)
     seg.set_max_iterations(100)
     sphere_indices, sphere_coefficients = seg.segment()
     
+    # identifies cone
+    seg = non_plane.make_segmenter_normals(ksearch=50)
+    seg.set_optimize_coefficients(True)
+    seg.set_model_type(pcl.SACMODEL_CONE)
+    seg.set_method_type(pcl.SAC_RANSAC)
+    seg.set_distance_threshold(0.03)
+    seg.set_normal_distance_weight(0.01)
+    seg.set_max_iterations(100)
+    cone_indices, cone_coefficients = seg.segment()
+    
     cylinder_fit = len(cyl_indices)/non_plane.size * 100
     sphere_fit = len(sphere_indices)/non_plane.size * 100
+    cone_fit = len(cone_indices)/non_plane.size * 100
     
-    self.get_logger().info('Cylinder fit: %f, Sphere fit: %f' % (cylinder_fit, sphere_fit))
+    self.get_logger().info('Cylinder fit: %f, Sphere fit: %f, Cone fit: %f' % (cylinder_fit, sphere_fit, cone_fit))
     
     sphere = non_plane.extract(sphere_indices, False)
     cylinder = non_plane.extract(cyl_indices, False)
+    cone = non_plane.extract(cyl_indices, False)
     
-    if sphere_fit > cylinder_fit:
+    if sphere_fit > cylinder_fit and sphere_fit > cone_fit:
     	pcls = sphere.to_list();
     	self.get_logger().info('Sphere Selected')
-    else:
+    elif cylinder_fit > sphere_fit and cylinder_fit > cone_fit:
     	pcls = cylinder.to_list();
     	self.get_logger().info('Cylinder Selected')
+    elif cone_fit > sphere_fit and cone_fit > cylinder_fit:
+    	pcls = cone.to_list();
+    	self.get_logger().info('Cone Selected')
     
     pcmsg = pc2.create_cloud_xyz32(pcmsg.header,pcls);
 
