@@ -13,7 +13,6 @@ import pcl
 from std_msgs.msg import Float64MultiArray
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2 as pc2
-from queue import *
 
 class PCSubscriber(Node):
   """
@@ -118,7 +117,7 @@ class PCSubscriber(Node):
     seg.set_optimize_coefficients(True)
     seg.set_model_type(pcl.SACMODEL_CONE)
     seg.set_method_type(pcl.SAC_RANSAC)
-    seg.set_distance_threshold(0.02)
+    seg.set_distance_threshold(0.03)
     seg.set_normal_distance_weight(0.01)
     seg.set_max_iterations(100)
     cone_indices, cone_coefficients = seg.segment()

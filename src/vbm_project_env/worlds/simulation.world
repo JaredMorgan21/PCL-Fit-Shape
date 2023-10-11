@@ -15,13 +15,10 @@
         <uri>model://table</uri>
         <pose>0 0 -0.75 0 0 1.57</pose>
     </include>
+
     <include>
         <uri>model://bottle_beer</uri>
         <pose>0.05 0.05 0.25 0 0 1.57</pose>
-    </include>
-    <include>
-        <uri>model://coke_can</uri>
-        <pose>-0.1 -0.1 0.3 0 1.57 1.57</pose>
     </include>
   </world>
 </sdf>
