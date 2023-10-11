@@ -47,7 +47,7 @@ class PCSubscriber(Node):
     """
     # Display the message on the console
     self.get_logger().info('Receiving point cloud')
-    
+
     #1-d point-cloud message of float-32s. Composed of pointfields with x, y, z, and rgb. A point is comprised of bytes where
     #x: 0-3
     #y: 4-7
@@ -93,95 +93,59 @@ class PCSubscriber(Node):
     ec.set_SearchMethod(tree)
     cluster_indices = ec.Extract()
     
-    cloud_cluster = pcl.PointCloud()
-    self.get_logger().info('Before cluster loop')
-    for cluster in cluster_indices:
-    	
-    	
-    	#cloud_cluster = pcl.PointCloud()
-    	
-   	#print('indices = ' + str(len(indices)))
-    	points = np.zeros((len(indices), 3), dtype=np.float32)
-    	self.get_logger().info('Before enumerating loop')
-    		
-    	for i, index in enumerate(cluster):
-    		points[i][0] = non_plane[index][0]
-    		points[i][1] = non_plane[index][1]
-    		points[i][2] = non_plane[index][2]
-    		#self.get_logger().info('Still enumerating loop')
-    			
-    	cloud_cluster.from_array(points)
-    	self.get_logger().info('Copying complete')
-    	
-    	# identifies cylinder
-    	seg = cloud_cluster.make_segmenter_normals(ksearch=50)
-    	self.get_logger().info('Segmenter made')
-    	seg.set_optimize_coefficients(True)
-    	self.get_logger().info('Coefficients Optimized')
-    	seg.set_model_type(pcl.SACMODEL_CYLINDER)
-    	self.get_logger().info('Model sacd')
-    	seg.set_method_type(pcl.SAC_RANSAC)
-    	self.get_logger().info('Model ransacd')
-    	seg.set_distance_threshold(0.03)
-    	self.get_logger().info('Distance thresheld')
-    	seg.set_normal_distance_weight(0.01)
-    	self.get_logger().info('Distance')
-    	seg.set_max_iterations(100)
-    	cyl_indices, cyl_coefficients = seg.segment()
-    	
-    	self.get_logger().info('Done with cylinder')
-    	
-    	# identifies sphere
-    	#seg = cloud_cluster.make_segmenter_normals(ksearch=50)
-    	#seg.set_model_type(pcl.SACMODEL_SPHERE)
-    	#seg.set_method_type(pcl.SAC_RANSAC)
-    	#seg.set_distance_threshold(0.01)
-    	#seg.set_normal_distance_weight(0.01)
-    	#seg.set_max_iterations(100)
-    	#sphere_indices, sphere_coefficients = seg.segment()
-    	
-    	self.get_logger().info('Done with sphere')
-    	
-    	# identifies cone
-    	#seg = cloud_cluster.make_segmenter_normals(ksearch=50)
-    	#seg.set_optimize_coefficients(True)
-    	#seg.set_model_type(pcl.SACMODEL_CONE)
-    	#seg.set_method_type(pcl.SAC_RANSAC)
-    	#seg.set_distance_threshold(0.02)
-    	#seg.set_normal_distance_weight(0.01)
-    	#seg.set_max_iterations(100)
-    	#cone_indices, cone_coefficients = seg.segment()
-    	
-    	self.get_logger().info('Done with cone')
-    	
-    	#cylinder_fit = len(cyl_indices)/cloud_cluster.size * 100
-    	#sphere_fit = len(sphere_indices)/cloud_cluster.size * 100
-    	#cone_fit = len(cone_indices)/cloud_cluster.size * 100
-    	
-    	#self.get_logger().info('Index: %f, Cylinder fit: %f, Sphere fit: %f, Cone fit: %f' % (i, cylinder_fit, sphere_fit, cone_fit))
-    	
-    	#sphere = cloud_cluster.extract(sphere_indices, False)
-    	#cylinder = cloud_cluster.extract(cyl_indices, False)
-    	#cone = cloud_cluster.extract(cyl_indices, False)
-    	
-    	#if sphere_fit > cylinder_fit and sphere_fit > cone_fit:
-    		#pcls = sphere.to_list()
-    		#self.get_logger().info('Sphere Selected')
-    	#elif cylinder_fit > sphere_fit and cylinder_fit > cone_fit:
-    		#pcls = cylinder.to_list()
-    		#self.get_logger().info('Cylinder Selected')
-    	#elif cone_fit > sphere_fit and cone_fit > cylinder_fit:
-    		#pcls = cone.to_list()
-    		#self.get_logger().info('Cone Selected')
-    	self.get_logger().info('##DONE WITH INNER##')
-    		
-    self.get_logger().info('*** DONE WITH LOOP***')
-    pcmsg = pc2.create_cloud_xyz32(pcmsg.header,pcls)
+    # identifies cylinder
+    seg = non_plane.make_segmenter_normals(ksearch=50)
+    seg.set_optimize_coefficients(True)
+    seg.set_model_type(pcl.SACMODEL_CYLINDER)
+    seg.set_method_type(pcl.SAC_RANSAC)
+    seg.set_distance_threshold(0.03)
+    seg.set_normal_distance_weight(0.01)
+    seg.set_max_iterations(100)
+    cyl_indices, cyl_coefficients = seg.segment()
+    
+    # identifies sphere
+    seg = non_plane.make_segmenter_normals(ksearch=50)
+    seg.set_optimize_coefficients(True)
+    seg.set_model_type(pcl.SACMODEL_SPHERE)
+    seg.set_method_type(pcl.SAC_RANSAC)
+    seg.set_distance_threshold(0.01)
+    seg.set_normal_distance_weight(0.01)
+    seg.set_max_iterations(100)
+    sphere_indices, sphere_coefficients = seg.segment()
+    
+    # identifies cone
+    seg = non_plane.make_segmenter_normals(ksearch=50)
+    seg.set_optimize_coefficients(True)
+    seg.set_model_type(pcl.SACMODEL_CONE)
+    seg.set_method_type(pcl.SAC_RANSAC)
+    seg.set_distance_threshold(0.02)
+    seg.set_normal_distance_weight(0.01)
+    seg.set_max_iterations(100)
+    cone_indices, cone_coefficients = seg.segment()
+    
+    cylinder_fit = len(cyl_indices)/non_plane.size * 100
+    sphere_fit = len(sphere_indices)/non_plane.size * 100
+    cone_fit = len(cone_indices)/non_plane.size * 100
+    
+    self.get_logger().info('Cylinder fit: %f, Sphere fit: %f, Cone fit: %f' % (cylinder_fit, sphere_fit, cone_fit))
+    
+    sphere = non_plane.extract(sphere_indices, False)
+    cylinder = non_plane.extract(cyl_indices, False)
+    cone = non_plane.extract(cyl_indices, False)
+    
+    if sphere_fit > cylinder_fit and sphere_fit > cone_fit:
+    	pcls = sphere.to_list();
+    	self.get_logger().info('Sphere Selected')
+    elif cylinder_fit > sphere_fit and cylinder_fit > cone_fit:
+    	pcls = cylinder.to_list();
+    	self.get_logger().info('Cylinder Selected')
+    elif cone_fit > sphere_fit and cone_fit > cylinder_fit:
+    	pcls = cone.to_list();
+    	self.get_logger().info('Cone Selected')
+    
+    pcmsg = pc2.create_cloud_xyz32(pcmsg.header,pcls);
+
     self.publisher_.publish(pcmsg)
-    
-    
-
-
  
 
 def main(args=None):
