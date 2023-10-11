@@ -86,7 +86,7 @@ class PCSubscriber(Node):
     # from https://github.com/strawlab/python-pcl/blob/master/examples/official/Segmentation/cluster_extraction.py
     tree = non_plane.make_kdtree()
     ec = non_plane.make_EuclideanClusterExtraction()
-    ec.set_ClusterTolerance(0.05)
+    ec.set_ClusterTolerance(0.1)
     ec.set_MinClusterSize(50)
     ec.set_MaxClusterSize(25000)
     ec.set_SearchMethod(tree)
@@ -97,7 +97,7 @@ class PCSubscriber(Node):
     pc_cluster = pcl.PointCloud()
     for j, indices in enumerate(cluster_indices):
 
-        print('indices = ' + str(len(indices)))
+        self.get_logger().info('Object {:.0f} detected of size {:.0f}' .format(j+1, len(indices)))
         points = np.zeros((len(indices), 3), dtype=np.float32)
         
         for i, index in enumerate(indices):
@@ -148,8 +148,7 @@ class PCSubscriber(Node):
         cylinder = non_plane.extract(cyl_indices, False)
         cone = non_plane.extract(cyl_indices, False)
         
-        # selects model based on fit algorithm	
-        
+        # selects model based on fit algorithm involving the size of the point cloud after segmentation
         if sphere_fit > cylinder_fit and sphere_fit > cone_fit:
     	     pcls = pcls + sphere.to_list()
     	     self.get_logger().info('Sphere Selected')
