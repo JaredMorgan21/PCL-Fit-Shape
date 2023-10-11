@@ -52,17 +52,17 @@ class PCSubscriber(Node):
     #y: 4-7
     #z: 8-11
     #rgb: 15-19
-    pcmsg = msg;
+    pcmsg = msg
     
     #converts binary blob to numpy array of tuple (x, y, z, rgb);
     #pcnp = pc2.read_points(msg);
     
     #converts binary blob to numpy array of tuple (x, y, z, rgb);
-    pcls = pc2.read_points_list(msg, skip_nans=True, field_names=("x", "y", "z"));
+    pcls = pc2.read_points_list(msg, skip_nans=True, field_names=("x", "y", "z"))
     
     #converts list to PointCloud
-    pc = pcl.PointCloud();
-    pc.from_list(pcls);
+    pc = pcl.PointCloud()
+    pc.from_list(pcls)
     
     # from https://github.com/strawlab/python-pcl/blob/master/examples/official/Filtering/VoxelGrid_160.py
     #sor = pc.make_voxel_grid_filter()
@@ -86,66 +86,79 @@ class PCSubscriber(Node):
     # from https://github.com/strawlab/python-pcl/blob/master/examples/official/Segmentation/cluster_extraction.py
     tree = non_plane.make_kdtree()
     ec = non_plane.make_EuclideanClusterExtraction()
-    ec.set_ClusterTolerance(0.02)
+    ec.set_ClusterTolerance(0.04)
     ec.set_MinClusterSize(100)
     ec.set_MaxClusterSize(25000)
     ec.set_SearchMethod(tree)
     cluster_indices = ec.Extract()
     
-    # identifies cylinder
-    seg = non_plane.make_segmenter_normals(ksearch=50)
-    seg.set_optimize_coefficients(True)
-    seg.set_model_type(pcl.SACMODEL_CYLINDER)
-    seg.set_method_type(pcl.SAC_RANSAC)
-    seg.set_distance_threshold(0.03)
-    seg.set_normal_distance_weight(0.01)
-    seg.set_max_iterations(100)
-    cyl_indices, cyl_coefficients = seg.segment()
+    cloud_cluster = pcl.PointCloud()
     
-    # identifies sphere
-    seg = non_plane.make_segmenter_normals(ksearch=50)
-    seg.set_optimize_coefficients(True)
-    seg.set_model_type(pcl.SACMODEL_SPHERE)
-    seg.set_method_type(pcl.SAC_RANSAC)
-    seg.set_distance_threshold(0.01)
-    seg.set_normal_distance_weight(0.01)
-    seg.set_max_iterations(100)
-    sphere_indices, sphere_coefficients = seg.segment()
-    
-    # identifies cone
-    seg = non_plane.make_segmenter_normals(ksearch=50)
-    seg.set_optimize_coefficients(True)
-    seg.set_model_type(pcl.SACMODEL_CONE)
-    seg.set_method_type(pcl.SAC_RANSAC)
-    seg.set_distance_threshold(0.03)
-    seg.set_normal_distance_weight(0.01)
-    seg.set_max_iterations(100)
-    cone_indices, cone_coefficients = seg.segment()
-    
-    cylinder_fit = len(cyl_indices)/non_plane.size * 100
-    sphere_fit = len(sphere_indices)/non_plane.size * 100
-    cone_fit = len(cone_indices)/non_plane.size * 100
-    
-    self.get_logger().info('Cylinder fit: %f, Sphere fit: %f, Cone fit: %f' % (cylinder_fit, sphere_fit, cone_fit))
-    
-    sphere = non_plane.extract(sphere_indices, False)
-    cylinder = non_plane.extract(cyl_indices, False)
-    cone = non_plane.extract(cyl_indices, False)
-    
-    if sphere_fit > cylinder_fit and sphere_fit > cone_fit:
-    	pcls = sphere.to_list();
-    	self.get_logger().info('Sphere Selected')
-    elif cylinder_fit > sphere_fit and cylinder_fit > cone_fit:
-    	pcls = cylinder.to_list();
-    	self.get_logger().info('Cylinder Selected')
-    elif cone_fit > sphere_fit and cone_fit > cylinder_fit:
-    	pcls = cone.to_list();
-    	self.get_logger().info('Cone Selected')
-    
-    pcmsg = pc2.create_cloud_xyz32(pcmsg.header,pcls);
+    displayed_points = non_plane.to_list()
+
+    for j, cluster in enumerate(cluster_indices):
+      points = np.zeros((len(cluster), 3), dtype=np.float32)
+      for i, indice in enumerate(cluster):
+        points[i][0] = non_plane[indice][0]
+        points[i][1] = non_plane[indice][1]
+        points[i][2] = non_plane[indice][2]
+      cloud_cluster.from_array(points)
+
+      # identifies cylinder with segmentation
+      seg = cloud_cluster.make_segmenter_normals(ksearch=50)
+      seg.set_optimize_coefficients(True)
+      seg.set_model_type(pcl.SACMODEL_CYLINDER)
+      seg.set_method_type(pcl.SAC_RANSAC)
+      seg.set_distance_threshold(0.03)
+      seg.set_normal_distance_weight(0.01)
+      seg.set_max_iterations(100)
+      cyl_indices, cyl_coefficients = seg.segment()
+
+      # identifies sphere with segmentation
+      seg = cloud_cluster.make_segmenter_normals(ksearch=50)
+      seg.set_optimize_coefficients(True)
+      seg.set_model_type(pcl.SACMODEL_SPHERE)
+      seg.set_method_type(pcl.SAC_RANSAC)
+      seg.set_distance_threshold(0.0075)
+      seg.set_normal_distance_weight(0.01)
+      seg.set_max_iterations(100)
+      sphere_indices, sphere_coefficients = seg.segment()
+
+      # identifies cone with segmentation
+      seg = cloud_cluster.make_segmenter_normals(ksearch=50)
+      seg.set_optimize_coefficients(True)
+      seg.set_model_type(pcl.SACMODEL_CONE)
+      seg.set_method_type(pcl.SAC_RANSAC)
+      seg.set_distance_threshold(0.015)
+      seg.set_normal_distance_weight(0.01)
+      seg.set_max_iterations(100)
+      cone_indices, cone_coefficients = seg.segment()
+
+      # calculate the coefficients 
+      cylinder_fit = len(cyl_indices)/cloud_cluster.size * 100
+      sphere_fit = len(sphere_indices)/cloud_cluster.size * 100
+      cone_fit = len(cone_indices)/cloud_cluster.size * 100
+
+      self.get_logger().info('Object: %f, Cylinder fit: %f, Sphere fit: %f, Cone fit: %f' % (j, cylinder_fit, sphere_fit, cone_fit))
+
+      sphere = cloud_cluster.extract(sphere_indices, False)
+      cylinder = cloud_cluster.extract(cyl_indices, False)
+      cone = cloud_cluster.extract(cyl_indices, False)
+
+      if sphere_fit > cylinder_fit and sphere_fit > cone_fit:
+        displayed_points += sphere.to_list()
+        self.get_logger().info('Sphere Selected')
+      elif cylinder_fit > sphere_fit and cylinder_fit > cone_fit:
+        displayed_points += cylinder.to_list()
+        self.get_logger().info('Cylinder Selected')
+      elif cone_fit > sphere_fit and cone_fit > cylinder_fit:
+        displayed_points += cone.to_list()
+        self.get_logger().info('Cone Selected')
+
+    pcmsg = pc2.create_cloud_xyz32(pcmsg.header,displayed_points)
 
     self.publisher_.publish(pcmsg)
- 
+
 
 def main(args=None):
   
