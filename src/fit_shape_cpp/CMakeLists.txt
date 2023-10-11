@@ -14,6 +14,8 @@ find_package(sensor_msgs REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
+include_directories(   include   ${PCL_INCLUDE_DIRS} )
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
@@ -28,5 +30,9 @@ endif()
 
 add_executable(fit_shape_cpp src/fit_shape.cpp)
 ament_target_dependencies(fit_shape_cpp rclcpp std_msgs sensor_msgs)
+install(TARGETS
+  fit_shape_cpp
+  DESTINATION lib/${PROJECT_NAME})
 
+ament_export_include_directories(include)
 ament_package()

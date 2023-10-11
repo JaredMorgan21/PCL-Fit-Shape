@@ -151,6 +151,25 @@ class PCSubscriber(Node):
         # selects model based on fit algorithm involving the size of the point cloud after segmentation
         if sphere_fit > cylinder_fit and sphere_fit > cone_fit:
     	     pcls = pcls + sphere.to_list()
+    	     
+             # from https://stackoverflow.com/questions/22930211/how-to-generate-sphere-coordinates-in-python
+    	     a = 12
+    	     r = sphere_coefficients[3]
+    	     theta = np.radians(np.linspace(0, 360, a+1))
+    	     phi = np.radians(np.linspace(0, 360, a+1))
+    	     
+    	     x = r * np.einsum("i,j->ij", np.cos(phi), np.sin(theta))
+    	     y = r * np.einsum("i,j->ij", np.sin(phi), np.sin(theta))
+    	     z = r * np.einsum("i,j->ij", np.ones(len(theta)), np.cos(theta))
+    	     xyz = np.array([x.flatten(), y.flatten(), z.flatten()])
+    	     
+    	     xs = xyz[0]
+    	     ys = xyz[1]
+    	     zs = xyz[2]
+    	     
+    	     for i, val in enumerate(xs):
+    	     	pcls.append([xs[i] + sphere_coefficients[0], ys[i] + sphere_coefficients[1], zs[i] + sphere_coefficients[2]])
+    	     
     	     self.get_logger().info('Sphere Selected')
         elif cylinder_fit > sphere_fit and cylinder_fit > cone_fit:
     	     pcls = pcls + cylinder.to_list();
