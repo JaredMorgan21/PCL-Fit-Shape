@@ -86,62 +86,81 @@ class PCSubscriber(Node):
     # from https://github.com/strawlab/python-pcl/blob/master/examples/official/Segmentation/cluster_extraction.py
     tree = non_plane.make_kdtree()
     ec = non_plane.make_EuclideanClusterExtraction()
-    ec.set_ClusterTolerance(0.02)
-    ec.set_MinClusterSize(100)
+    ec.set_ClusterTolerance(0.05)
+    ec.set_MinClusterSize(50)
     ec.set_MaxClusterSize(25000)
     ec.set_SearchMethod(tree)
     cluster_indices = ec.Extract()
     
-    # identifies cylinder
-    seg = non_plane.make_segmenter_normals(ksearch=50)
-    seg.set_optimize_coefficients(True)
-    seg.set_model_type(pcl.SACMODEL_CYLINDER)
-    seg.set_method_type(pcl.SAC_RANSAC)
-    seg.set_distance_threshold(0.03)
-    seg.set_normal_distance_weight(0.01)
-    seg.set_max_iterations(100)
-    cyl_indices, cyl_coefficients = seg.segment()
-    
-    # identifies sphere
-    seg = non_plane.make_segmenter_normals(ksearch=50)
-    seg.set_optimize_coefficients(True)
-    seg.set_model_type(pcl.SACMODEL_SPHERE)
-    seg.set_method_type(pcl.SAC_RANSAC)
-    seg.set_distance_threshold(0.01)
-    seg.set_normal_distance_weight(0.01)
-    seg.set_max_iterations(100)
-    sphere_indices, sphere_coefficients = seg.segment()
-    
-    # identifies cone
-    seg = non_plane.make_segmenter_normals(ksearch=50)
-    seg.set_optimize_coefficients(True)
-    seg.set_model_type(pcl.SACMODEL_CONE)
-    seg.set_method_type(pcl.SAC_RANSAC)
-    seg.set_distance_threshold(0.03)
-    seg.set_normal_distance_weight(0.01)
-    seg.set_max_iterations(100)
-    cone_indices, cone_coefficients = seg.segment()
-    
-    cylinder_fit = len(cyl_indices)/non_plane.size * 100
-    sphere_fit = len(sphere_indices)/non_plane.size * 100
-    cone_fit = len(cone_indices)/non_plane.size * 100
-    
-    self.get_logger().info('Cylinder fit: %f, Sphere fit: %f, Cone fit: %f' % (cylinder_fit, sphere_fit, cone_fit))
-    
-    sphere = non_plane.extract(sphere_indices, False)
-    cylinder = non_plane.extract(cyl_indices, False)
-    cone = non_plane.extract(cyl_indices, False)
-    
-    if sphere_fit > cylinder_fit and sphere_fit > cone_fit:
-    	pcls = sphere.to_list();
-    	self.get_logger().info('Sphere Selected')
-    elif cylinder_fit > sphere_fit and cylinder_fit > cone_fit:
-    	pcls = cylinder.to_list();
-    	self.get_logger().info('Cylinder Selected')
-    elif cone_fit > sphere_fit and cone_fit > cylinder_fit:
-    	pcls = cone.to_list();
-    	self.get_logger().info('Cone Selected')
-    
+    #WIP
+    pcls = [];
+    pc_cluster = pcl.PointCloud()
+    for j, indices in enumerate(cluster_indices):
+
+        print('indices = ' + str(len(indices)))
+        points = np.zeros((len(indices), 3), dtype=np.float32)
+        
+        for i, index in enumerate(indices):
+            points[i][0] = non_plane[index][0]
+            points[i][1] = non_plane[index][1]
+            points[i][2] = non_plane[index][2]
+
+        pc_cluster.from_array(points)
+        
+        # identifies cylinder
+        seg = pc_cluster.make_segmenter_normals(ksearch=50)
+        seg.set_optimize_coefficients(True)
+        seg.set_model_type(pcl.SACMODEL_CYLINDER)
+        seg.set_method_type(pcl.SAC_RANSAC)
+        seg.set_distance_threshold(0.03)
+        seg.set_normal_distance_weight(0.01)
+        seg.set_max_iterations(100)
+        cyl_indices, cyl_coefficients = seg.segment()
+        
+        # identifies sphere
+        seg = pc_cluster.make_segmenter_normals(ksearch=50)
+        seg.set_optimize_coefficients(True)
+        seg.set_model_type(pcl.SACMODEL_SPHERE)
+        seg.set_method_type(pcl.SAC_RANSAC)
+        seg.set_distance_threshold(0.01)
+        seg.set_normal_distance_weight(0.01)
+        seg.set_max_iterations(100)
+        sphere_indices, sphere_coefficients = seg.segment()
+        
+        # identifies cone
+        seg = pc_cluster.make_segmenter_normals(ksearch=50)
+        seg.set_optimize_coefficients(True)
+        seg.set_model_type(pcl.SACMODEL_CONE)
+        seg.set_method_type(pcl.SAC_RANSAC)
+        seg.set_distance_threshold(0.025)
+        seg.set_normal_distance_weight(0.01)
+        seg.set_max_iterations(100)
+        cone_indices, cone_coefficients = seg.segment()
+        
+        # current fit algorithm
+        cylinder_fit = len(cyl_indices)/pc_cluster.size * 100
+        sphere_fit = len(sphere_indices)/pc_cluster.size * 100
+        cone_fit = len(cone_indices)/pc_cluster.size * 100
+        
+        self.get_logger().info('Cylinder fit: %f, Sphere fit: %f, Cone fit: %f' % (cylinder_fit, sphere_fit, cone_fit))
+        
+        sphere = non_plane.extract(sphere_indices, False)
+        cylinder = non_plane.extract(cyl_indices, False)
+        cone = non_plane.extract(cyl_indices, False)
+        
+        # selects model based on fit algorithm	
+        
+        if sphere_fit > cylinder_fit and sphere_fit > cone_fit:
+    	     pcls = pcls + sphere.to_list()
+    	     self.get_logger().info('Sphere Selected')
+        elif cylinder_fit > sphere_fit and cylinder_fit > cone_fit:
+    	     pcls = pcls + cylinder.to_list();
+    	     self.get_logger().info('Cylinder Selected')
+        elif cone_fit > sphere_fit and cone_fit > cylinder_fit:
+    	     pcls = pcls + cone.to_list();
+    	     self.get_logger().info('Cone Selected')
+
+    #print(pcls)
     pcmsg = pc2.create_cloud_xyz32(pcmsg.header,pcls);
 
     self.publisher_.publish(pcmsg)
