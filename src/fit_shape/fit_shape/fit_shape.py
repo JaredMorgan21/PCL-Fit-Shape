@@ -184,4 +184,9 @@ if __name__ == '__main__':
 
 """
 NOTES
+
+Commands to launch
+ros2 run fit_shape fit_shape
+ros2 launch vbm_project_env simulation.launch.py
+
 """
