@@ -77,7 +77,7 @@ class PCSubscriber(Node):
     seg.set_optimize_coefficients(True)
     seg.set_model_type(pcl.SACMODEL_NORMAL_PLANE)
     seg.set_method_type(pcl.SAC_RANSAC)
-    seg.set_distance_threshold(0.005)
+    seg.set_distance_threshold(0.01)
     seg.set_normal_distance_weight(0.01)
     seg.set_max_iterations(100)
     indices, coefficients = seg.segment()
@@ -134,7 +134,7 @@ class PCSubscriber(Node):
         seg.set_optimize_coefficients(True)
         seg.set_model_type(pcl.SACMODEL_CONE)
         seg.set_method_type(pcl.SAC_RANSAC)
-        seg.set_distance_threshold(0.025)
+        seg.set_distance_threshold(0.03)
         seg.set_normal_distance_weight(0.01)
         seg.set_max_iterations(100)
         cone_indices, cone_coefficients = seg.segment()
@@ -152,8 +152,8 @@ class PCSubscriber(Node):
         
         # selects model based on fit algorithm involving the size of the point cloud after segmentation
         if sphere_fit > cylinder_fit and sphere_fit > cone_fit:
-             self.get_logger().info('Sphere Selected')
-             #pcls = pcls + sphere.to_list()
+             self.get_logger().info('Sphere selected of radius %f' % sphere_coefficients[3])
+             pcls = pcls + sphere.to_list()
     	     
              # from https://stackoverflow.com/questions/22930211/how-to-generate-sphere-coordinates-in-python
              a = 80
@@ -175,37 +175,38 @@ class PCSubscriber(Node):
     	     	
         elif cylinder_fit > sphere_fit and cylinder_fit > cone_fit:
     	     #pcls = pcls + cylinder.to_list();
-    	     self.get_logger().info('Cylinder Selected')
+    	     self.get_logger().info('Cylinder selected of radius %f' % cyl_coefficients[6])
 
-    	     r = cyl_coefficients[6]
-    	     center = [cyl_coefficients[0], cyl_coefficients[1], cyl_coefficients[2]]
-    	     orientation = [cyl_coefficients[3], cyl_coefficients[4], cyl_coefficients[5]]
-    	     l = 0.15;
+    	     height = 0.3
+    	     p0 = np.array([cyl_coefficients[0], cyl_coefficients[1], cyl_coefficients[2]])
+    	     axis = np.array([cyl_coefficients[3], cyl_coefficients[4], abs(cyl_coefficients[5])])
+    	     R = cyl_coefficients[6];
     	     
-    	     cyl_points = make_cylinder(r, l, center, orientation);
-    	     for i, val in enumerate(cyl_points):
-             	pcls.append([cyl_points[i][0], cyl_points[i][1], cyl_points[i][2]])
+    	     cyl_points = make_cylinder(p0, axis, R, height);
+    	     xs = cyl_points[0].flatten();
+    	     ys = cyl_points[1].flatten();
+    	     zs = cyl_points[2].flatten();
+    	     
+    	     for i, val in enumerate(xs):
+    	     	pcls.append([xs[i], ys[i], zs[i]])
     	     
 
-        elif cone_fit > sphere_fit and cone_fit > cylinder_fit:
+        elif cone_fit >= sphere_fit and cone_fit >= cylinder_fit:
     	     #pcls = pcls + cone.to_list();
     	     self.get_logger().info('Cone Selected')
     	     
     	     height = 0.3
     	     p0 = np.array([cone_coefficients[0], cone_coefficients[1], cone_coefficients[2]])
-    	     p1 = np.array([cone_coefficients[0] + height*cone_coefficients[3], cone_coefficients[1] + height*cone_coefficients[4], cone_coefficients[2] + height*cone_coefficients[5]])
+    	     axis = np.array([cone_coefficients[3], cone_coefficients[4], abs(cone_coefficients[5])])
     	     R0 = 0;
     	     R1 = height*math.tan(cone_coefficients[6]);
     	     
-    	     cone_points = truncated_cone(p0, p1, R0, R1);
+    	     cone_points = truncated_cone(p0, axis, R0, R1, height);
     	     xs = cone_points[0].flatten();
     	     ys = cone_points[1].flatten();
     	     zs = cone_points[2].flatten();
-    	     
-    	     print(xs[0], ys[0], zs[0], p0, cone_coefficients[0], cone_coefficients[1], cone_coefficients[2])
-    	     
+    	        
     	     for i, val in enumerate(xs):
-    	     	#print(xs[i], ys[i], zs[i])
     	     	pcls.append([xs[i], ys[i], zs[i]])
     	     
     pcmsg = pc2.create_cloud_xyz32(pcmsg.header,pcls);
@@ -231,68 +232,15 @@ def main(args=None):
   
   # Shutdown the ROS client library for Python
   rclpy.shutdown()
-  
-def rotation_matrix(axis, theta):
-    """
-    Return the rotation matrix associated with counterclockwise rotation about
-    the given axis by theta radians.
-    """
-    axis = np.asarray(axis)
-    axis = axis / math.sqrt(np.dot(axis, axis))
-    a = math.cos(theta / 2.0)
-    b, c, d = -axis * math.sin(theta / 2.0)
-    aa, bb, cc, dd = a * a, b * b, c * c, d * d
-    bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
-    return np.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
-                     [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
-                     [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
-                   
-# from https://stackoverflow.com/questions/22285994/how-to-generate-regular-points-on-cylindrical-surface  
-def make_cylinder(radius, length, center, orientation):
-
-    nlength = 80
-    nalpha = 80
-
-    #Create the length array
-    I = np.linspace(0, length, nlength)
-
-    #Create alpha array avoid duplication of endpoints
-    #Conditional should be changed to meet your requirements
-    A = np.linspace(0, 360, nalpha, endpoint=False)/180*np.pi
-
-    #Calculate X and Y
-    X = radius * np.cos(A)
-    Y = radius * np.sin(A)
-
-    #Tile/repeat indices so all unique pairs are present
-    pz = np.tile(I, nalpha)
-    px = np.repeat(X, nlength)
-    py = np.repeat(Y, nlength)
-
-    points = np.vstack(( pz, px, py )).T
-
-    #Orient tube to new vector
-    ovec = orientation / np.linalg.norm(orientation)
-    cylvec = np.array([1,0,0])
-
-    if np.allclose(cylvec, ovec):
-        return points
-
-    #Get orthogonal axis and rotation
-    oaxis = np.cross(ovec, cylvec)
-    rot = np.arccos(np.dot(ovec, cylvec))
-
-    R = rotation_matrix(oaxis, rot)
-
-    return points.dot(R) + center + np.mean(points, axis=0)
-    
+                      
 # from https://stackoverflow.com/questions/48703275/3d-truncated-cone-in-python
-def truncated_cone(p0, p1, R0, R1):
+def make_cylinder(p0, axis, R0, height):
+    R1 = R0
     """
     Based on https://stackoverflow.com/a/39823124/190597 (astrokeat)
     """
     # vector in direction of axis
-    v = p1 - p0
+    v = axis
     # find magnitude of vector
     mag = norm(v)
     # unit vector in direction of axis
@@ -310,7 +258,41 @@ def truncated_cone(p0, p1, R0, R1):
     n2 = np.cross(v, n1)
     # surface ranges over t from 0 to length of axis and 0 to 2*pi
     n = 80
-    t = np.linspace(0, mag, n)
+    t = np.linspace(0, height, n)
+    theta = np.linspace(0, 2 * np.pi, n)
+    # use meshgrid to make 2d arrays
+    t, theta = np.meshgrid(t, theta)
+    R = np.linspace(R0, R1, n)
+    # generate coordinates for surface
+    X, Y, Z = [p0[i] + v[i] * t + R *
+               np.sin(theta) * n1[i] + R * np.cos(theta) * n2[i] for i in [0, 1, 2]]
+    return [X,Y,Z]
+    
+# from https://stackoverflow.com/questions/48703275/3d-truncated-cone-in-python
+def truncated_cone(p0, axis, R0, R1, height):
+    """
+    Based on https://stackoverflow.com/a/39823124/190597 (astrokeat)
+    """
+    # vector in direction of axis
+    v = axis
+    # find magnitude of vector
+    mag = norm(v)
+    # unit vector in direction of axis
+    v = v / mag
+    # make some vector not in the same direction as v
+    not_v = np.array([1, 1, 0])
+    if (v == not_v).all():
+        not_v = np.array([0, 1, 0])
+    # make vector perpendicular to v
+    n1 = np.cross(v, not_v)
+    # print n1,'\t',norm(n1)
+    # normalize n1
+    n1 /= norm(n1)
+    # make unit vector perpendicular to v and n1
+    n2 = np.cross(v, n1)
+    # surface ranges over t from 0 to length of axis and 0 to 2*pi
+    n = 80
+    t = np.linspace(0, height, n)
     theta = np.linspace(0, 2 * np.pi, n)
     # use meshgrid to make 2d arrays
     t, theta = np.meshgrid(t, theta)
