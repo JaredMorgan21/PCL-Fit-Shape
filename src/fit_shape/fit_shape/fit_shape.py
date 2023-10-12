@@ -54,7 +54,7 @@ class PCSubscriber(Node):
     #y: 4-7
     #z: 8-11
     #rgb: 15-19
-    pcmsg = msg;
+    pcmsg = msg
     
     #converts binary blob to numpy array of tuple (x, y, z, rgb);
     #pcnp = pc2.read_points(msg);
@@ -63,8 +63,8 @@ class PCSubscriber(Node):
     pcls = pc2.read_points_list(msg, skip_nans=True, field_names=("x", "y", "z"));
     
     #converts list to PointCloud
-    pc = pcl.PointCloud();
-    pc.from_list(pcls);
+    pc = pcl.PointCloud()
+    pc.from_list(pcls)
     
     # from https://github.com/strawlab/python-pcl/blob/master/examples/official/Filtering/VoxelGrid_160.py
     #sor = pc.make_voxel_grid_filter()
@@ -82,7 +82,13 @@ class PCSubscriber(Node):
     seg.set_max_iterations(100)
     indices, coefficients = seg.segment()
     
+    # Extracting the indices from the pc without the major plane
     non_plane = pc.extract(indices, True)
+
+    # Filter/downsample with voxel grid WIP
+    #vg = non_plane.make_voxel_grid_filter()
+    #vg.set_leaf_size(0.001, 0.001, 0.001)
+    #non_plane = vg.filter()
     
     # clusters the shapes found
     # from https://github.com/strawlab/python-pcl/blob/master/examples/official/Segmentation/cluster_extraction.py
@@ -95,18 +101,23 @@ class PCSubscriber(Node):
     cluster_indices = ec.Extract()
     
     #WIP
-    pcls = [];
-    pc_cluster = pcl.PointCloud()
-    for j, indices in enumerate(cluster_indices):
+    pcls = []
 
+    # Creates a new point cloud for each cluster in the loop
+    pc_cluster = pcl.PointCloud()
+    # Loops through the extract clusters from the point cloud
+    for j, indices in enumerate(cluster_indices):
+        # Logs the size of the point cloud of the object
         self.get_logger().info('Object {:.0f} detected of size {:.0f}' .format(j+1, len(indices)))
+        # Creates an empty array
         points = np.zeros((len(indices), 3), dtype=np.float32)
-        
+        # Convert the points from the cluster nested in the point cloud to an array
         for i, index in enumerate(indices):
             points[i][0] = non_plane[index][0]
             points[i][1] = non_plane[index][1]
             points[i][2] = non_plane[index][2]
 
+        # Converts np array to point cloud object
         pc_cluster.from_array(points)
         
         # identifies cylinder
@@ -144,8 +155,10 @@ class PCSubscriber(Node):
         sphere_fit = len(sphere_indices)/pc_cluster.size * 100
         cone_fit = len(cone_indices)/pc_cluster.size * 100
         
+        # Print to terminal and log
         self.get_logger().info('Cylinder fit: %f, Sphere fit: %f, Cone fit: %f' % (cylinder_fit, sphere_fit, cone_fit))
         
+        # Re-extract the shapes from the point cloud with out the major plane
         sphere = non_plane.extract(sphere_indices, False)
         cylinder = non_plane.extract(cyl_indices, False)
         cone = non_plane.extract(cyl_indices, False)
@@ -161,6 +174,7 @@ class PCSubscriber(Node):
              theta = np.radians(np.linspace(0, 360, a+1))
              phi = np.radians(np.linspace(0, 360, a+1))
              
+             # Creates the points for the sphere
              x = r * np.einsum("i,j->ij", np.cos(phi), np.sin(theta))
              y = r * np.einsum("i,j->ij", np.sin(phi), np.sin(theta))
              z = r * np.einsum("i,j->ij", np.ones(len(theta)), np.cos(theta))
@@ -170,46 +184,59 @@ class PCSubscriber(Node):
              ys = xyz[1]
              zs = xyz[2]
              
+             # Add the sphere poitns to the point cloud
              for i, val in enumerate(xs):
              	pcls.append([xs[i] + sphere_coefficients[0], ys[i] + sphere_coefficients[1], zs[i] + sphere_coefficients[2]])
-    	     	
+        # Checks if cylinder fit is the highest
         elif cylinder_fit > sphere_fit and cylinder_fit > cone_fit:
     	     #pcls = pcls + cylinder.to_list();
-    	     self.get_logger().info('Cylinder selected of radius %f' % cyl_coefficients[6])
+             self.get_logger().info('Cylinder selected of radius %f' % cyl_coefficients[6])
 
-    	     height = 0.3
-    	     p0 = np.array([cyl_coefficients[0], cyl_coefficients[1], cyl_coefficients[2]])
-    	     axis = np.array([cyl_coefficients[3], cyl_coefficients[4], abs(cyl_coefficients[5])])
-    	     R = cyl_coefficients[6];
+             # Extracts the features of the cylinder
+             # radius
+             R = cyl_coefficients[6]
+             # center point
+             p0 = np.array([cyl_coefficients[0], cyl_coefficients[1], cyl_coefficients[2]])
+             # direction of axis with respect to world frame
+             axis = np.array([cyl_coefficients[3], cyl_coefficients[4], cyl_coefficients[5]])
+             # Manually set the legnth given that it is not
+             # determined by the fit_shape function
+             height = 0.3
+    	    
+             # Creates a cylinder based on the parameters listed above
+             cyl_points = make_cylinder(p0, axis, R, height);
+             xs = cyl_points[0].flatten();
+             ys = cyl_points[1].flatten();
+             zs = cyl_points[2].flatten();
+             # Appends the cylinder poitns to the pointcloud
+             for i, val in enumerate(xs):
+                  pcls.append([xs[i], ys[i], zs[i]])
     	     
-    	     cyl_points = make_cylinder(p0, axis, R, height);
-    	     xs = cyl_points[0].flatten();
-    	     ys = cyl_points[1].flatten();
-    	     zs = cyl_points[2].flatten();
-    	     
-    	     for i, val in enumerate(xs):
-    	     	pcls.append([xs[i], ys[i], zs[i]])
-    	     
-
+        # Checks if the cone fit is the highest
         elif cone_fit >= sphere_fit and cone_fit >= cylinder_fit:
     	     #pcls = pcls + cone.to_list();
     	     self.get_logger().info('Cone Selected')
     	     
+           # Creates the points for the non-truncated postion of the cone
     	     height = 0.3
     	     p0 = np.array([cone_coefficients[0], cone_coefficients[1], cone_coefficients[2]])
-    	     axis = np.array([cone_coefficients[3], cone_coefficients[4], abs(cone_coefficients[5])])
-    	     R0 = 0;
-    	     R1 = height*math.tan(cone_coefficients[6]);
+    	     axis = np.array([cyl_coefficients[3], cyl_coefficients[4], cyl_coefficients[5]])
+    	     R0 = 0
+    	     R1 = height*math.tan(cone_coefficients[6])
     	     
-    	     cone_points = truncated_cone(p0, axis, R0, R1, height);
-    	     xs = cone_points[0].flatten();
-    	     ys = cone_points[1].flatten();
-    	     zs = cone_points[2].flatten();
-    	        
+           # Creates the points for the trunctaed portion of the cone
+    	     cone_points = truncated_cone(p0, axis, R0, R1, height)
+    	     xs = cone_points[0].flatten()
+    	     ys = cone_points[1].flatten()
+    	     zs = cone_points[2].flatten()
+    	     
+           # Add the points to a point cloud
     	     for i, val in enumerate(xs):
     	     	pcls.append([xs[i], ys[i], zs[i]])
-    	     
-    pcmsg = pc2.create_cloud_xyz32(pcmsg.header,pcls);
+
+    # Publish teh point cloud without the major plane
+    # and with the projected shapes. 
+    pcmsg = pc2.create_cloud_xyz32(pcmsg.header,pcls)
 
     self.publisher_.publish(pcmsg)
  
@@ -232,7 +259,7 @@ def main(args=None):
   
   # Shutdown the ROS client library for Python
   rclpy.shutdown()
-                      
+                   
 # from https://stackoverflow.com/questions/48703275/3d-truncated-cone-in-python
 def make_cylinder(p0, axis, R0, height):
     R1 = R0
